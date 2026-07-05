@@ -4,11 +4,11 @@ set(HEADERFILES
 )
 
 set(SRCS
-    network.c
+    address.c
 )
 
 set(SPECIFIC_SRCS
-    address.c
+    network.c
     tcp.c
     udp.c
 )

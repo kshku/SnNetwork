@@ -1,13 +1,17 @@
 #include <snnetwork/address.h>
 
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/socket.h>
+#elif defined(SN_OS_WINDOWS)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#endif
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 SN_STATIC_ASSERT(sizeof(struct sockaddr_in6) <= sizeof(SnEndPoint),
     "SnEndPoint must be large enough for sockaddr_in6");
@@ -141,5 +145,3 @@ bool sn_end_point_equal(const SnEndPoint *a, const SnEndPoint *b) {
         return memcmp(a->data, b->data, sizeof(struct sockaddr_in6)) == 0;
     return false;
 }
-
-#endif
