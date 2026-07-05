@@ -1,5 +1,8 @@
-#include <stdio.h>
+#include <snnetwork/network.h>
 
-void test_print(void) {
-    printf("Hello, World!\n");
+bool sn_network_init(void) {
+    return true;
+}
+
+void sn_network_deinit(void) {
 }

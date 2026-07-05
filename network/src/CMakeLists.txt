@@ -8,11 +8,14 @@ set(SRCS
 )
 
 set(SPECIFIC_SRCS
+    address.c
+    tcp.c
+    udp.c
 )
 
 set(SUBDIRS
+    nix
     win32
-    pthread
 )
 
 set(INCLUDE_BASE "${PROJECT_SOURCE_DIR}/network/include/snnetwork")
