@@ -1,14 +1,21 @@
 enable_testing()
 
-set(SRCS
-    test.c
-)
+set(TEST_COMMON_SRCS)
 
 add_executable(sn_network_test)
-target_sources(sn_network_test PRIVATE ${SRCS})
+target_sources(sn_network_test PRIVATE test.c ${TEST_COMMON_SRCS})
 target_link_libraries(sn_network_test PRIVATE snnetwork)
-
 add_test(NAME sn_network_test COMMAND sn_network_test)
+
+add_executable(sn_network_tcp_test)
+target_sources(sn_network_tcp_test PRIVATE tcp_test.c ${TEST_COMMON_SRCS})
+target_link_libraries(sn_network_tcp_test PRIVATE snnetwork)
+add_test(NAME sn_network_tcp_test COMMAND sn_network_tcp_test)
+
+add_executable(sn_network_udp_test)
+target_sources(sn_network_udp_test PRIVATE udp_test.c ${TEST_COMMON_SRCS})
+target_link_libraries(sn_network_udp_test PRIVATE snnetwork)
+add_test(NAME sn_network_udp_test COMMAND sn_network_udp_test)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND SN_NETWORK_BUILD_SHARED)
     add_custom_target(copy_dlls ALL
