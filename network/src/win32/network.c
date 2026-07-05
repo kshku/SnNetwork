@@ -2,7 +2,7 @@
 
 #if defined(SN_OS_WINDOWS)
 
-#include <winsock2.h>
+    #include <winsock2.h>
 
 bool sn_network_init(void) {
     WSADATA wsa;

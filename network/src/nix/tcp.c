@@ -2,13 +2,13 @@
 
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <unistd.h>
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+    #include <netinet/tcp.h>
+    #include <string.h>
+    #include <sys/socket.h>
+    #include <sys/time.h>
+    #include <unistd.h>
 
 static int get_fd(const SnTcpSocket *sock) {
     int fd;
@@ -23,13 +23,17 @@ static void set_fd(SnTcpSocket *sock, int fd) {
 static bool ep_to_sockaddr(const SnEndPoint *ep, struct sockaddr_storage *ss, socklen_t *len) {
     if (!ep) return false;
 
+    struct sockaddr sa;
+    memcpy(&sa, ep->data, sizeof(sa));
+
     memset(ss, 0, sizeof(*ss));
-    memcpy(ss, ep->data, sizeof(*ss));
-    if (ss->ss_family == AF_INET) {
+    if (sa.sa_family == AF_INET) {
+        memcpy(ss, ep->data, sizeof(struct sockaddr_in));
         *len = sizeof(struct sockaddr_in);
         return true;
     }
-    if (ss->ss_family == AF_INET6) {
+    if (sa.sa_family == AF_INET6) {
+        memcpy(ss, ep->data, sizeof(struct sockaddr_in6));
         *len = sizeof(struct sockaddr_in6);
         return true;
     }
@@ -41,8 +45,7 @@ bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog) {
 
     struct sockaddr_storage ss;
     socklen_t addrlen;
-    if (ep && !ep_to_sockaddr(ep, &ss, &addrlen))
-        return false;
+    if (ep && !ep_to_sockaddr(ep, &ss, &addrlen)) return false;
 
     int domain = ep ? ss.ss_family : AF_INET;
     int fd = socket(domain, SOCK_STREAM, 0);
@@ -102,8 +105,7 @@ bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep) {
 
     struct sockaddr_storage ss;
     socklen_t addrlen;
-    if (!ep_to_sockaddr(ep, &ss, &addrlen))
-        return false;
+    if (!ep_to_sockaddr(ep, &ss, &addrlen)) return false;
 
     int fd = socket(ss.ss_family, SOCK_STREAM, 0);
     if (fd < 0) return false;
@@ -165,10 +167,8 @@ bool sn_tcp_set_timeout(SnTcpSocket *sock, uint64_t timeout_ms) {
     tv.tv_sec = (long)(timeout_ms / 1000);
     tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
 
-    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
-        return false;
-    if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0)
-        return false;
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) return false;
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) return false;
 
     return true;
 }

@@ -57,7 +57,8 @@ SN_NETWORK_API void sn_end_point_create_ipv4(SnEndPoint *ep, const uint8_t addr[
  * @param[in]  scope_id Scope ID for link-local addresses (e.g. interface index).
  *                      Pass 0 when not needed.
  */
-SN_NETWORK_API void sn_end_point_create_ipv6(SnEndPoint *ep, const uint8_t addr[16], uint16_t port, uint32_t scope_id);
+SN_NETWORK_API void
+    sn_end_point_create_ipv6(SnEndPoint *ep, const uint8_t addr[16], uint16_t port, uint32_t scope_id);
 
 /**
  * @brief Parse a string into an endpoint.

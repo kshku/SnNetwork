@@ -9,8 +9,8 @@
  * include individual headers (address.h, tcp.h, udp.h) for finer granularity.
  */
 
-#include "snnetwork/api.h"
 #include "snnetwork/address.h"
+#include "snnetwork/api.h"
 #include "snnetwork/tcp.h"
 #include "snnetwork/udp.h"
 

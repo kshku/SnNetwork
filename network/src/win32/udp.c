@@ -2,9 +2,9 @@
 
 #if defined(SN_OS_WINDOWS)
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <string.h>
+    #include <string.h>
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
 
 static SOCKET get_fd(const SnUdpSocket *sock) {
     SOCKET fd;
@@ -57,8 +57,7 @@ bool sn_udp_bind(SnUdpSocket *sock, const SnEndPoint *ep) {
 
     struct sockaddr_storage ss;
     int addrlen;
-    if (!ep_to_sockaddr(ep, &ss, &addrlen))
-        return false;
+    if (!ep_to_sockaddr(ep, &ss, &addrlen)) return false;
 
     return bind(fd, (struct sockaddr *)&ss, addrlen) != SOCKET_ERROR;
 }
@@ -71,8 +70,7 @@ int64_t sn_udp_send_to(SnUdpSocket *sock, const void *data, uint64_t size, const
 
     struct sockaddr_storage ss;
     int addrlen;
-    if (!ep_to_sockaddr(ep, &ss, &addrlen))
-        return -1;
+    if (!ep_to_sockaddr(ep, &ss, &addrlen)) return -1;
 
     if (size > INT_MAX) size = INT_MAX;
     int ret = sendto(fd, (const char *)data, (int)size, 0, (struct sockaddr *)&ss, addrlen);
