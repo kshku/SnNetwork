@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnNetwork VERSION 0.0.0 DESCRIPTION "Socket and networking abstraction library" LANGUAGES C)
+project(SnNetwork VERSION 0.1.0 DESCRIPTION "Socket and networking abstraction library" LANGUAGES C)
 
 include(FetchContent)
 FetchContent_Declare(sncore
