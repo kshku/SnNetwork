@@ -2,9 +2,9 @@
 
 #if defined(SN_OS_WINDOWS)
 
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <string.h>
+    #include <string.h>
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
 
 static SOCKET get_fd(const SnTcpSocket *sock) {
     SOCKET fd;
@@ -44,8 +44,7 @@ bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog) {
 
     struct sockaddr_storage ss;
     int addrlen;
-    if (ep && !ep_to_sockaddr(ep, &ss, &addrlen))
-        return false;
+    if (ep && !ep_to_sockaddr(ep, &ss, &addrlen)) return false;
 
     int domain = ep ? ss.ss_family : AF_INET;
     SOCKET fd = socket(domain, SOCK_STREAM, 0);
@@ -105,8 +104,7 @@ bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep) {
 
     struct sockaddr_storage ss;
     int addrlen;
-    if (!ep_to_sockaddr(ep, &ss, &addrlen))
-        return false;
+    if (!ep_to_sockaddr(ep, &ss, &addrlen)) return false;
 
     SOCKET fd = socket(ss.ss_family, SOCK_STREAM, 0);
     if (fd == INVALID_SOCKET) return false;

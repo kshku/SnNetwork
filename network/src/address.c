@@ -1,20 +1,20 @@
 #include <snnetwork/address.h>
 
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+    #include <sys/socket.h>
 #elif defined(SN_OS_WINDOWS)
-#include <winsock2.h>
-#include <ws2tcpip.h>
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
 #endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-SN_STATIC_ASSERT(sizeof(struct sockaddr_in6) <= sizeof(SnEndPoint),
-    "SnEndPoint must be large enough for sockaddr_in6");
+SN_STATIC_ASSERT(sizeof(struct sockaddr_in6) <= sizeof(SnEndPoint), "SnEndPoint must be large "
+                                                                    "enough for sockaddr_in6");
 
 void sn_end_point_create_ipv4(SnEndPoint *ep, const uint8_t addr[4], uint16_t port) {
     struct sockaddr_in sin;
@@ -56,8 +56,7 @@ bool sn_end_point_from_string(SnEndPoint *ep, const char *str) {
         if (pct) {
             *pct = '\0';
             unsigned long idx = strtoul(pct + 1, NULL, 10);
-            if (idx > 0 && idx <= UINT32_MAX)
-                scope_id = (uint32_t)idx;
+            if (idx > 0 && idx <= UINT32_MAX) scope_id = (uint32_t)idx;
         }
 
         if (close_bracket[1] != ':') return false;
@@ -100,26 +99,29 @@ uint16_t sn_end_point_get_port(const SnEndPoint *ep) {
 
 SnAddressFamily sn_end_point_get_family(const SnEndPoint *ep) {
     if (!ep) return SN_ADDRESS_FAMILY_UNSPEC;
-    struct sockaddr_storage ss;
-    memcpy(&ss, ep->data, sizeof(ss));
-    if (ss.ss_family == AF_INET) return SN_ADDRESS_FAMILY_IPV4;
-    if (ss.ss_family == AF_INET6) return SN_ADDRESS_FAMILY_IPV6;
+    struct sockaddr sa;
+    memcpy(&sa, ep->data, sizeof(sa));
+    if (sa.sa_family == AF_INET) return SN_ADDRESS_FAMILY_IPV4;
+    if (sa.sa_family == AF_INET6) return SN_ADDRESS_FAMILY_IPV6;
     return SN_ADDRESS_FAMILY_UNSPEC;
 }
 
 void sn_end_point_to_string(const SnEndPoint *ep, char buf[SN_ENDPOINT_STRING_MAX_LENGTH]) {
-    if (!ep) { buf[0] = '\0'; return; }
+    if (!ep) {
+        buf[0] = '\0';
+        return;
+    }
 
-    struct sockaddr_storage ss;
-    memcpy(&ss, ep->data, sizeof(ss));
+    struct sockaddr sa;
+    memcpy(&sa, ep->data, sizeof(sa));
 
-    if (ss.ss_family == AF_INET) {
+    if (sa.sa_family == AF_INET) {
         struct sockaddr_in sin;
         memcpy(&sin, ep->data, sizeof(sin));
         inet_ntop(AF_INET, &sin.sin_addr, buf, SN_ENDPOINT_STRING_MAX_LENGTH);
         size_t len = strlen(buf);
         snprintf(buf + len, SN_ENDPOINT_STRING_MAX_LENGTH - len, ":%u", ntohs(sin.sin_port));
-    } else if (ss.ss_family == AF_INET6) {
+    } else if (sa.sa_family == AF_INET6) {
         struct sockaddr_in6 sin6;
         memcpy(&sin6, ep->data, sizeof(sin6));
         buf[0] = '[';
@@ -134,14 +136,13 @@ void sn_end_point_to_string(const SnEndPoint *ep, char buf[SN_ENDPOINT_STRING_MA
 bool sn_end_point_equal(const SnEndPoint *a, const SnEndPoint *b) {
     if (!a || !b) return false;
 
-    struct sockaddr_storage a_ss, b_ss;
-    memcpy(&a_ss, a->data, sizeof(a_ss));
-    memcpy(&b_ss, b->data, sizeof(b_ss));
-    if (a_ss.ss_family != b_ss.ss_family) return false;
+    struct sockaddr a_sa, b_sa;
+    memcpy(&a_sa, a->data, sizeof(a_sa));
+    memcpy(&b_sa, b->data, sizeof(b_sa));
+    if (a_sa.sa_family != b_sa.sa_family) return false;
 
-    if (a_ss.ss_family == AF_INET)
-        return memcmp(a->data, b->data, sizeof(struct sockaddr_in)) == 0;
-    if (a_ss.ss_family == AF_INET6)
+    if (a_sa.sa_family == AF_INET) return memcmp(a->data, b->data, sizeof(struct sockaddr_in)) == 0;
+    if (a_sa.sa_family == AF_INET6)
         return memcmp(a->data, b->data, sizeof(struct sockaddr_in6)) == 0;
     return false;
 }

@@ -2,12 +2,12 @@
 
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <unistd.h>
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+    #include <string.h>
+    #include <sys/socket.h>
+    #include <sys/time.h>
+    #include <unistd.h>
 
 static int get_fd(const SnUdpSocket *sock) {
     int fd;
@@ -22,13 +22,17 @@ static void set_fd(SnUdpSocket *sock, int fd) {
 static bool ep_to_sockaddr(const SnEndPoint *ep, struct sockaddr_storage *ss, socklen_t *len) {
     if (!ep) return false;
 
+    struct sockaddr sa;
+    memcpy(&sa, ep->data, sizeof(sa));
+
     memset(ss, 0, sizeof(*ss));
-    memcpy(ss, ep->data, sizeof(*ss));
-    if (ss->ss_family == AF_INET) {
+    if (sa.sa_family == AF_INET) {
+        memcpy(ss, ep->data, sizeof(struct sockaddr_in));
         *len = sizeof(struct sockaddr_in);
         return true;
     }
-    if (ss->ss_family == AF_INET6) {
+    if (sa.sa_family == AF_INET6) {
+        memcpy(ss, ep->data, sizeof(struct sockaddr_in6));
         *len = sizeof(struct sockaddr_in6);
         return true;
     }
@@ -53,8 +57,7 @@ bool sn_udp_bind(SnUdpSocket *sock, const SnEndPoint *ep) {
 
     struct sockaddr_storage ss;
     socklen_t addrlen;
-    if (!ep_to_sockaddr(ep, &ss, &addrlen))
-        return false;
+    if (!ep_to_sockaddr(ep, &ss, &addrlen)) return false;
 
     return bind(fd, (struct sockaddr *)&ss, addrlen) == 0;
 }
@@ -67,8 +70,7 @@ int64_t sn_udp_send_to(SnUdpSocket *sock, const void *data, uint64_t size, const
 
     struct sockaddr_storage ss;
     socklen_t addrlen;
-    if (!ep_to_sockaddr(ep, &ss, &addrlen))
-        return -1;
+    if (!ep_to_sockaddr(ep, &ss, &addrlen)) return -1;
 
     if (size > INT64_MAX) size = INT64_MAX;
     ssize_t ret = sendto(fd, data, (size_t)size, 0, (struct sockaddr *)&ss, addrlen);
