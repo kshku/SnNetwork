@@ -96,26 +96,26 @@ uint16_t sn_end_point_get_port(const SnEndPoint *ep) {
 
 SnAddressFamily sn_end_point_get_family(const SnEndPoint *ep) {
     if (!ep) return SN_ADDRESS_FAMILY_UNSPEC;
-    uint16_t family;
-    memcpy(&family, ep->data, sizeof(family));
-    if (family == AF_INET) return SN_ADDRESS_FAMILY_IPV4;
-    if (family == AF_INET6) return SN_ADDRESS_FAMILY_IPV6;
+    struct sockaddr_storage ss;
+    memcpy(&ss, ep->data, sizeof(ss));
+    if (ss.ss_family == AF_INET) return SN_ADDRESS_FAMILY_IPV4;
+    if (ss.ss_family == AF_INET6) return SN_ADDRESS_FAMILY_IPV6;
     return SN_ADDRESS_FAMILY_UNSPEC;
 }
 
 void sn_end_point_to_string(const SnEndPoint *ep, char buf[SN_ENDPOINT_STRING_MAX_LENGTH]) {
     if (!ep) { buf[0] = '\0'; return; }
 
-    uint16_t family;
-    memcpy(&family, ep->data, sizeof(family));
+    struct sockaddr_storage ss;
+    memcpy(&ss, ep->data, sizeof(ss));
 
-    if (family == AF_INET) {
+    if (ss.ss_family == AF_INET) {
         struct sockaddr_in sin;
         memcpy(&sin, ep->data, sizeof(sin));
         inet_ntop(AF_INET, &sin.sin_addr, buf, SN_ENDPOINT_STRING_MAX_LENGTH);
         size_t len = strlen(buf);
         snprintf(buf + len, SN_ENDPOINT_STRING_MAX_LENGTH - len, ":%u", ntohs(sin.sin_port));
-    } else if (family == AF_INET6) {
+    } else if (ss.ss_family == AF_INET6) {
         struct sockaddr_in6 sin6;
         memcpy(&sin6, ep->data, sizeof(sin6));
         buf[0] = '[';
@@ -129,16 +129,15 @@ void sn_end_point_to_string(const SnEndPoint *ep, char buf[SN_ENDPOINT_STRING_MA
 
 bool sn_end_point_equal(const SnEndPoint *a, const SnEndPoint *b) {
     if (!a || !b) return false;
-    uint16_t family;
-    memcpy(&family, a->data, sizeof(family));
 
-    uint16_t b_family;
-    memcpy(&b_family, b->data, sizeof(b_family));
-    if (family != b_family) return false;
+    struct sockaddr_storage a_ss, b_ss;
+    memcpy(&a_ss, a->data, sizeof(a_ss));
+    memcpy(&b_ss, b->data, sizeof(b_ss));
+    if (a_ss.ss_family != b_ss.ss_family) return false;
 
-    if (family == AF_INET)
+    if (a_ss.ss_family == AF_INET)
         return memcmp(a->data, b->data, sizeof(struct sockaddr_in)) == 0;
-    if (family == AF_INET6)
+    if (a_ss.ss_family == AF_INET6)
         return memcmp(a->data, b->data, sizeof(struct sockaddr_in6)) == 0;
     return false;
 }

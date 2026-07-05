@@ -22,22 +22,15 @@ static void set_fd(SnTcpSocket *sock, int fd) {
 
 static bool ep_to_sockaddr(const SnEndPoint *ep, struct sockaddr_storage *ss, socklen_t *len) {
     if (!ep) return false;
-    uint16_t family;
-    memcpy(&family, ep->data, sizeof(family));
 
     memset(ss, 0, sizeof(*ss));
-    if (family == AF_INET) {
-        struct sockaddr_in sin;
-        memcpy(&sin, ep->data, sizeof(sin));
-        memcpy(ss, &sin, sizeof(sin));
-        *len = sizeof(sin);
+    memcpy(ss, ep->data, sizeof(*ss));
+    if (ss->ss_family == AF_INET) {
+        *len = sizeof(struct sockaddr_in);
         return true;
     }
-    if (family == AF_INET6) {
-        struct sockaddr_in6 sin6;
-        memcpy(&sin6, ep->data, sizeof(sin6));
-        memcpy(ss, &sin6, sizeof(sin6));
-        *len = sizeof(sin6);
+    if (ss->ss_family == AF_INET6) {
+        *len = sizeof(struct sockaddr_in6);
         return true;
     }
     return false;
