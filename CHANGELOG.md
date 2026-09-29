@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.1] - 2026-09-28
+
+### Changed
+- Take sncore v0.3.1 rather than v0.2.0
+
 All notable changes to this project will be documented in this file.
 
 ## [0.1.0] - 2026-07-05
