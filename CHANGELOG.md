@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.3] - 2026-10-02
+
+### Changed
+- Take sncore v0.3.2 rather than v0.3.1
+
 ## [0.1.2] - 2026-10-02
 
 ### Changed
