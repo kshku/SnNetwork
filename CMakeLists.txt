@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnNetwork VERSION 0.1.1 DESCRIPTION "Socket and networking abstraction library" LANGUAGES C)
+project(SnNetwork VERSION 0.1.2 DESCRIPTION "Socket and networking abstraction library" LANGUAGES C)
 
 include(FetchContent)
 FetchContent_Declare(sncore
@@ -23,6 +23,7 @@ set(gcc_clang_comp "$<COMPILE_LANG_AND_ID:C,Clang,GNU>")
 set(msvc_comp "$<COMPILE_LANG_AND_ID:C,MSVC>")
 
 target_compile_options(sn_network_configs INTERFACE "$<${gcc_clang_comp}:-Wall;-Wextra;-Wformat;-Wuninitialized;-Wpedantic>")
+target_compile_options(sn_network_configs INTERFACE "$<${gcc_clang_comp}:-Wconversion;-Wsign-conversion>")
 
 target_compile_options(sn_network_configs INTERFACE "$<${gcc_clang_comp}:-fvisibility=hidden>")
 
