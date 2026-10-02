@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.15...3.31)
 
-project(SnNetwork VERSION 0.1.2 DESCRIPTION "Socket and networking abstraction library" LANGUAGES C)
+project(SnNetwork VERSION 0.1.3 DESCRIPTION "Socket and networking abstraction library" LANGUAGES C)
 
 include(FetchContent)
 FetchContent_Declare(sncore
     GIT_REPOSITORY https://github.com/kshku/SnCore.git
-    GIT_TAG v0.3.1
+    GIT_TAG v0.3.2
 )
 FetchContent_MakeAvailable(sncore)
 
