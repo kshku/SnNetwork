@@ -11,7 +11,7 @@ IPv4 and IPv6 across platforms.
 
 | Function | Description |
 |----------|-------------|
-| `bool sn_network_init(bool enable_ipv6)` | Initialize networking subsystem (call once before any other networking function) |
+| `bool sn_network_init(void)` | Initialize networking subsystem (call once before any other networking function) |
 | `void sn_network_deinit(void)` | Shutdown networking subsystem |
 
 ### Endpoint (`<snnetwork/address.h>`)
@@ -31,11 +31,12 @@ IPv4 and IPv6 across platforms.
 | Function | Description |
 |----------|-------------|
 | `bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog)` | Create socket, bind, and listen |
-| `bool sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep)` | Accept a connection |
+| `SnAcceptStatus sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep, uint64_t timeout_ms)` | Accept a connection within a deadline |
 | `bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep)` | Connect to a remote endpoint |
 | `int64_t sn_tcp_send(SnTcpSocket *sock, const void *data, uint64_t size)` | Send data |
-| `int64_t sn_tcp_receive(SnTcpSocket *sock, void *buf, uint64_t size)` | Receive data |
+| `int64_t sn_tcp_receive(SnTcpSocket *sock, void *buf, uint64_t size, SnRecvStatus *status)` | Receive data and report the outcome |
 | `void sn_tcp_close(SnTcpSocket *sock)` | Close socket |
+| `bool sn_tcp_shutdown(SnTcpSocket *sock, SnShutdownHow how)` | Shut down read/write/both without closing |
 | `bool sn_tcp_set_nodelay(SnTcpSocket *sock, bool enable)` | Enable/disable Nagle's algorithm |
 | `bool sn_tcp_set_timeout(SnTcpSocket *sock, uint64_t timeout_ms)` | Set send/receive timeout |
 | `bool sn_tcp_set_keepalive(SnTcpSocket *sock, bool enable)` | Enable/disable TCP keepalive |
@@ -47,9 +48,16 @@ IPv4 and IPv6 across platforms.
 | `bool sn_udp_open(SnUdpSocket *sock)` | Create a UDP socket |
 | `bool sn_udp_bind(SnUdpSocket *sock, const SnEndPoint *ep)` | Bind to a local endpoint |
 | `int64_t sn_udp_send_to(SnUdpSocket *sock, const void *data, uint64_t size, const SnEndPoint *ep)` | Send data to a remote endpoint |
-| `int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep)` | Receive data and capture sender endpoint |
+| `int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep, SnRecvStatus *status)` | Receive data and capture sender endpoint |
 | `void sn_udp_close(SnUdpSocket *sock)` | Close socket |
 | `bool sn_udp_set_timeout(SnUdpSocket *sock, uint64_t timeout_ms)` | Set receive timeout |
+
+### Socket (`<snnetwork/socket.h>`)
+
+| Function | Description |
+|----------|-------------|
+| `SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms)` | Wait until any socket in a set is readable, or a deadline elapses |
+| `bool sn_socket_get_local_end_point(const SnSocket *sock, SnEndPoint *ep)` | Get the local (bound) endpoint of a socket |
 
 ## Usage
 
@@ -73,12 +81,13 @@ int main(void) {
     sn_tcp_connect(&client, &ep);
 
     SnTcpSocket server;
-    sn_tcp_accept(&listener, &server, NULL);
+    sn_tcp_accept(&listener, &server, NULL, SN_TIMEOUT_INFINITE);
 
     sn_tcp_send(&client, "hello", 5);
 
     char buf[64] = {0};
-    sn_tcp_receive(&server, buf, sizeof(buf));
+    SnRecvStatus status;
+    sn_tcp_receive(&server, buf, sizeof(buf), &status);
     printf("Received: %s\n", buf);  // "hello"
 
     sn_tcp_close(&server);

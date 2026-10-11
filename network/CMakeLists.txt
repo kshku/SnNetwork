@@ -10,7 +10,7 @@ target_include_directories(snnetwork PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include
 target_include_directories(snnetwork PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_link_libraries(snnetwork PRIVATE sn_network_configs)
-target_link_libraries(snnetwork PUBLIC sncore)
+target_link_libraries(snnetwork PUBLIC sncore sntime)
 
 if(WIN32)
     target_link_libraries(snnetwork PRIVATE "ws2_32")

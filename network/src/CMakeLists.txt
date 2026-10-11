@@ -9,6 +9,7 @@ set(SRCS
 
 set(SPECIFIC_SRCS
     network.c
+    socket.c
     tcp.c
     udp.c
 )

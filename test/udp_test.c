@@ -47,8 +47,9 @@ int main(void) {
 
     char recv_buf[64] = {0};
     SnEndPoint sender_ep;
-    int64_t received = sn_udp_receive_from(&sock_a, recv_buf, sizeof(recv_buf), &sender_ep);
-    if (received != (int64_t)strlen(msg) || strcmp(recv_buf, msg) != 0) {
+    SnRecvStatus status = SN_RECV_ERROR;
+    int64_t received = sn_udp_receive_from(&sock_a, recv_buf, sizeof(recv_buf), &sender_ep, &status);
+    if (received != (int64_t)strlen(msg) || status != SN_RECV_DATA || strcmp(recv_buf, msg) != 0) {
         printf("FAIL: sn_udp_receive_from (got: %s)\n", recv_buf);
         sn_udp_close(&sock_b);
         sn_udp_close(&sock_a);
@@ -68,8 +69,8 @@ int main(void) {
 
     memset(recv_buf, 0, sizeof(recv_buf));
     SnEndPoint responder_ep;
-    received = sn_udp_receive_from(&sock_b, recv_buf, sizeof(recv_buf), &responder_ep);
-    if (received != (int64_t)strlen(response) || strcmp(recv_buf, response) != 0) {
+    received = sn_udp_receive_from(&sock_b, recv_buf, sizeof(recv_buf), &responder_ep, &status);
+    if (received != (int64_t)strlen(response) || status != SN_RECV_DATA || strcmp(recv_buf, response) != 0) {
         printf("FAIL: sn_udp_receive_from response (got: %s)\n", recv_buf);
         sn_udp_close(&sock_b);
         sn_udp_close(&sock_a);

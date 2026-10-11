@@ -70,16 +70,28 @@ bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog) {
     return true;
 }
 
-bool sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep) {
-    if (!sock || !client) return false;
+SnAcceptStatus sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep, uint64_t timeout_ms) {
+    if (!sock || !client) return SN_ACCEPT_ERROR;
 
     SOCKET fd = get_fd(sock);
-    if (fd == INVALID_SOCKET) return false;
+    if (fd == INVALID_SOCKET) return SN_ACCEPT_ERROR;
+
+    SnPollFd pfd;
+    pfd.sock = sock;
+    pfd.readable = false;
+    pfd.hangup = false;
+    SnWaitStatus wait = sn_socket_wait(&pfd, 1, timeout_ms);
+    if (wait == SN_WAIT_ERROR) return SN_ACCEPT_ERROR;
+    if (wait == SN_WAIT_TIMEOUT) return SN_ACCEPT_TIMEOUT;
 
     struct sockaddr_storage ss;
     int addrlen = sizeof(ss);
     SOCKET client_fd = accept(fd, (struct sockaddr *)&ss, &addrlen);
-    if (client_fd == INVALID_SOCKET) return false;
+    if (client_fd == INVALID_SOCKET) {
+        int error = WSAGetLastError();
+        if (error == WSAEWOULDBLOCK || error == WSAEINTR) return SN_ACCEPT_TIMEOUT;
+        return SN_ACCEPT_ERROR;
+    }
 
     set_fd(client, client_fd);
 
@@ -96,7 +108,7 @@ bool sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep
         }
     }
 
-    return true;
+    return SN_ACCEPT_OK;
 }
 
 bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep) {
@@ -129,15 +141,28 @@ int64_t sn_tcp_send(SnTcpSocket *sock, const void *data, uint64_t size) {
     return ret == SOCKET_ERROR ? -1 : (int64_t)ret;
 }
 
-int64_t sn_tcp_receive(SnTcpSocket *sock, void *buf, uint64_t size) {
-    if (!sock) return -1;
+int64_t sn_tcp_receive(SnTcpSocket *sock, void *buf, uint64_t size, SnRecvStatus *status) {
+    if (status) *status = SN_RECV_ERROR;
+    if (!sock || !buf) return -1;
 
     SOCKET fd = get_fd(sock);
     if (fd == INVALID_SOCKET) return -1;
 
     if (size > INT_MAX) size = INT_MAX;
     int ret = recv(fd, (char *)buf, (int)size, 0);
-    return ret == SOCKET_ERROR ? -1 : (int64_t)ret;
+    if (ret == SOCKET_ERROR) {
+        int error = WSAGetLastError();
+        if (status)
+            *status = (error == WSAETIMEDOUT || error == WSAEWOULDBLOCK) ? SN_RECV_TIMEOUT : SN_RECV_ERROR;
+        return -1;
+    }
+    if (ret == 0) {
+        if (status) *status = SN_RECV_CLOSED;
+        return 0;
+    }
+
+    if (status) *status = SN_RECV_DATA;
+    return (int64_t)ret;
 }
 
 void sn_tcp_close(SnTcpSocket *sock) {
@@ -147,6 +172,30 @@ void sn_tcp_close(SnTcpSocket *sock) {
         closesocket(fd);
         set_fd(sock, INVALID_SOCKET);
     }
+}
+
+bool sn_tcp_shutdown(SnTcpSocket *sock, SnShutdownHow how) {
+    if (!sock) return false;
+
+    SOCKET fd = get_fd(sock);
+    if (fd == INVALID_SOCKET) return false;
+
+    int direction;
+    switch (how) {
+        case SN_SHUTDOWN_RD:
+            direction = SD_RECEIVE;
+            break;
+        case SN_SHUTDOWN_WR:
+            direction = SD_SEND;
+            break;
+        case SN_SHUTDOWN_BOTH:
+            direction = SD_BOTH;
+            break;
+        default:
+            return false;
+    }
+
+    return shutdown(fd, direction) != SOCKET_ERROR;
 }
 
 bool sn_tcp_set_nodelay(SnTcpSocket *sock, bool enable) {

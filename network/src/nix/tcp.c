@@ -3,6 +3,7 @@
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
 
     #include <arpa/inet.h>
+    #include <errno.h>
     #include <netinet/in.h>
     #include <netinet/tcp.h>
     #include <string.h>
@@ -71,16 +72,27 @@ bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog) {
     return true;
 }
 
-bool sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep) {
-    if (!sock || !client) return false;
+SnAcceptStatus sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep, uint64_t timeout_ms) {
+    if (!sock || !client) return SN_ACCEPT_ERROR;
 
     int fd = get_fd(sock);
-    if (fd < 0) return false;
+    if (fd < 0) return SN_ACCEPT_ERROR;
+
+    SnPollFd pfd;
+    pfd.sock = sock;
+    pfd.readable = false;
+    pfd.hangup = false;
+    SnWaitStatus wait = sn_socket_wait(&pfd, 1, timeout_ms);
+    if (wait == SN_WAIT_ERROR) return SN_ACCEPT_ERROR;
+    if (wait == SN_WAIT_TIMEOUT) return SN_ACCEPT_TIMEOUT;
 
     struct sockaddr_storage ss;
     socklen_t addrlen = sizeof(ss);
     int client_fd = accept(fd, (struct sockaddr *)&ss, &addrlen);
-    if (client_fd < 0) return false;
+    if (client_fd < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) return SN_ACCEPT_TIMEOUT;
+        return SN_ACCEPT_ERROR;
+    }
 
     set_fd(client, client_fd);
 
@@ -97,7 +109,7 @@ bool sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint *client_ep
         }
     }
 
-    return true;
+    return SN_ACCEPT_OK;
 }
 
 bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep) {
@@ -130,15 +142,32 @@ int64_t sn_tcp_send(SnTcpSocket *sock, const void *data, uint64_t size) {
     return ret < 0 ? -1 : (int64_t)ret;
 }
 
-int64_t sn_tcp_receive(SnTcpSocket *sock, void *buf, uint64_t size) {
-    if (!sock) return -1;
+int64_t sn_tcp_receive(SnTcpSocket *sock, void *buf, uint64_t size, SnRecvStatus *status) {
+    if (status) *status = SN_RECV_ERROR;
+    if (!sock || !buf) return -1;
 
     int fd = get_fd(sock);
     if (fd < 0) return -1;
 
     if (size > INT64_MAX) size = INT64_MAX;
-    ssize_t ret = recv(fd, buf, (size_t)size, 0);
-    return ret < 0 ? -1 : (int64_t)ret;
+
+    ssize_t ret;
+    do {
+        ret = recv(fd, buf, (size_t)size, 0);
+    } while (ret < 0 && errno == EINTR);
+
+    if (ret < 0) {
+        if (status)
+            *status = (errno == EAGAIN || errno == EWOULDBLOCK) ? SN_RECV_TIMEOUT : SN_RECV_ERROR;
+        return -1;
+    }
+    if (ret == 0) {
+        if (status) *status = SN_RECV_CLOSED;
+        return 0;
+    }
+
+    if (status) *status = SN_RECV_DATA;
+    return (int64_t)ret;
 }
 
 void sn_tcp_close(SnTcpSocket *sock) {
@@ -148,6 +177,30 @@ void sn_tcp_close(SnTcpSocket *sock) {
         close(fd);
         set_fd(sock, -1);
     }
+}
+
+bool sn_tcp_shutdown(SnTcpSocket *sock, SnShutdownHow how) {
+    if (!sock) return false;
+
+    int fd = get_fd(sock);
+    if (fd < 0) return false;
+
+    int direction;
+    switch (how) {
+        case SN_SHUTDOWN_RD:
+            direction = SHUT_RD;
+            break;
+        case SN_SHUTDOWN_WR:
+            direction = SHUT_WR;
+            break;
+        case SN_SHUTDOWN_BOTH:
+            direction = SHUT_RDWR;
+            break;
+        default:
+            return false;
+    }
+
+    return shutdown(fd, direction) == 0;
 }
 
 bool sn_tcp_set_nodelay(SnTcpSocket *sock, bool enable) {

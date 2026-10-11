@@ -3,6 +3,7 @@
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
 
     #include <arpa/inet.h>
+    #include <errno.h>
     #include <netinet/in.h>
     #include <string.h>
     #include <sys/socket.h>
@@ -77,8 +78,10 @@ int64_t sn_udp_send_to(SnUdpSocket *sock, const void *data, uint64_t size, const
     return ret < 0 ? -1 : (int64_t)ret;
 }
 
-int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep) {
-    if (!sock) return -1;
+int64_t sn_udp_receive_from(
+    SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep, SnRecvStatus *status) {
+    if (status) *status = SN_RECV_ERROR;
+    if (!sock || !buf) return -1;
 
     int fd = get_fd(sock);
     if (fd < 0) return -1;
@@ -87,8 +90,17 @@ int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPo
     socklen_t addrlen = sizeof(ss);
 
     if (size > INT64_MAX) size = INT64_MAX;
-    ssize_t ret = recvfrom(fd, buf, (size_t)size, 0, (struct sockaddr *)&ss, &addrlen);
-    if (ret < 0) return -1;
+
+    ssize_t ret;
+    do {
+        ret = recvfrom(fd, buf, (size_t)size, 0, (struct sockaddr *)&ss, &addrlen);
+    } while (ret < 0 && errno == EINTR);
+
+    if (ret < 0) {
+        if (status)
+            *status = (errno == EAGAIN || errno == EWOULDBLOCK) ? SN_RECV_TIMEOUT : SN_RECV_ERROR;
+        return -1;
+    }
 
     if (sender_ep) {
         memset(sender_ep->data, 0, sizeof(sender_ep->data));
@@ -103,6 +115,7 @@ int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPo
         }
     }
 
+    if (status) *status = SN_RECV_DATA;
     return (int64_t)ret;
 }
 
