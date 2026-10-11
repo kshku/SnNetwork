@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(SN_OS_WINDOWS)
+    #include <windows.h>
+#else
+    #include <fcntl.h>
+#endif
+
 static const uint8_t LOOPBACK[4] = {127, 0, 0, 1};
 static int failures = 0;
 
@@ -356,6 +362,57 @@ static void test_shutdown(void) {
     sn_tcp_close(&listener);
 }
 
+/* R8: sockets must not leak into a spawned child process, so every socket
+   SnNetwork creates or accepts is close-on-exec / non-inheritable. */
+static bool socket_is_inheritable(const SnSocket *sock) {
+#if defined(SN_OS_WINDOWS)
+    uintptr_t handle = 0;
+    memcpy(&handle, sock->data, sizeof(handle));
+    DWORD flags = 0;
+    if (!GetHandleInformation((HANDLE)handle, &flags)) return false;
+    return (flags & HANDLE_FLAG_INHERIT) != 0;
+#else
+    int fd = -1;
+    memcpy(&fd, sock->data, sizeof(fd));
+    int flags = fcntl(fd, F_GETFD);
+    if (flags < 0) return false;
+    return (flags & FD_CLOEXEC) == 0;
+#endif
+}
+
+static void test_sockets_not_inherited(void) {
+    SnTcpSocket listener;
+    uint16_t port = 0;
+    if (!make_listener(&listener, &port)) {
+        fail("inheritance: listen");
+        return;
+    }
+
+    SnTcpSocket client;
+    SnTcpSocket server;
+    if (!connect_client(&client, port) || sn_tcp_accept(&listener, &server, NULL, 1000) != SN_ACCEPT_OK) {
+        fail("inheritance: connect/accept");
+        sn_tcp_close(&listener);
+        return;
+    }
+
+    if (socket_is_inheritable(&listener)) fail("inheritance: listener can leak");
+    if (socket_is_inheritable(&client)) fail("inheritance: client can leak");
+    if (socket_is_inheritable(&server)) fail("inheritance: accepted socket can leak");
+
+    SnUdpSocket udp;
+    if (!sn_udp_open(&udp)) {
+        fail("inheritance: udp open");
+    } else {
+        if (socket_is_inheritable(&udp)) fail("inheritance: udp can leak");
+        sn_udp_close(&udp);
+    }
+
+    sn_tcp_close(&client);
+    sn_tcp_close(&server);
+    sn_tcp_close(&listener);
+}
+
 int main(void) {
     if (!sn_network_init()) {
         printf("FAIL: sn_network_init\n");
@@ -370,6 +427,7 @@ int main(void) {
     test_accept_deadline();
     test_receive_status();
     test_shutdown();
+    test_sockets_not_inherited();
 
     sn_network_deinit();
 

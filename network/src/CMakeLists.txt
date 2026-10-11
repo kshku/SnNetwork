@@ -9,6 +9,7 @@ set(SRCS
 )
 
 set(SPECIFIC_SRCS
+    cloexec.c
     network.c
     socket.c
     tcp.c

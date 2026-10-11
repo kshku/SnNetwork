@@ -60,6 +60,10 @@ IPv4 and IPv6 across platforms.
 | `SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms)` | Wait until any socket in a set is readable, or a deadline elapses |
 | `bool sn_socket_get_local_end_point(const SnSocket *sock, SnEndPoint *ep)` | Get the local (bound) endpoint of a socket |
 
+Every socket SnNetwork creates or accepts — TCP, UDP, and connections returned
+by `sn_tcp_accept` — is marked close-on-exec on POSIX and non-inheritable on
+Windows, so it is never inherited by a process you spawn.
+
 ## Usage
 
 ```c

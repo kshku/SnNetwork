@@ -1,3 +1,5 @@
+#include "../internal.h"
+
 #include <snnetwork/tcp.h>
 
 #if defined(SN_OS_WINDOWS)
@@ -49,6 +51,10 @@ bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog) {
     int domain = ep ? ss.ss_family : AF_INET;
     SOCKET fd = socket(domain, SOCK_STREAM, 0);
     if (fd == INVALID_SOCKET) return false;
+    if (!sn_network_set_close_on_exec((intptr_t)fd)) {
+        closesocket(fd);
+        return false;
+    }
 
     char optval = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
@@ -92,6 +98,10 @@ SnAcceptStatus sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint 
         if (error == WSAEWOULDBLOCK || error == WSAEINTR) return SN_ACCEPT_TIMEOUT;
         return SN_ACCEPT_ERROR;
     }
+    if (!sn_network_set_close_on_exec((intptr_t)client_fd)) {
+        closesocket(client_fd);
+        return SN_ACCEPT_ERROR;
+    }
 
     set_fd(client, client_fd);
 
@@ -120,6 +130,10 @@ bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep) {
 
     SOCKET fd = socket(ss.ss_family, SOCK_STREAM, 0);
     if (fd == INVALID_SOCKET) return false;
+    if (!sn_network_set_close_on_exec((intptr_t)fd)) {
+        closesocket(fd);
+        return false;
+    }
 
     if (connect(fd, (struct sockaddr *)&ss, addrlen) == SOCKET_ERROR) {
         closesocket(fd);
