@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1] - 2026-10-11
+
+### Fixed
+- Sockets are created close-on-exec on POSIX and non-inheritable on Windows,
+  including sockets accepted from a listener, so a spawned child process can no
+  longer inherit the engine's listening and connected sockets
+
 ## [0.3.0] - 2026-10-11
 
 ### Added

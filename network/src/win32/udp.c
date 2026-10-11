@@ -1,3 +1,5 @@
+#include "../internal.h"
+
 #include <snnetwork/udp.h>
 
 #if defined(SN_OS_WINDOWS)
@@ -44,6 +46,10 @@ bool sn_udp_open(SnUdpSocket *sock) {
 
     SOCKET fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd == INVALID_SOCKET) return false;
+    if (!sn_network_set_close_on_exec((intptr_t)fd)) {
+        closesocket(fd);
+        return false;
+    }
 
     set_fd(sock, fd);
     return true;

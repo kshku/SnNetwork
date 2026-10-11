@@ -1,3 +1,5 @@
+#include "../internal.h"
+
 #include <snnetwork/tcp.h>
 
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
@@ -51,6 +53,10 @@ bool sn_tcp_listen(SnTcpSocket *sock, const SnEndPoint *ep, int backlog) {
     int domain = ep ? ss.ss_family : AF_INET;
     int fd = socket(domain, SOCK_STREAM, 0);
     if (fd < 0) return false;
+    if (!sn_network_set_close_on_exec(fd)) {
+        close(fd);
+        return false;
+    }
 
     int optval = 1;
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
@@ -93,6 +99,10 @@ SnAcceptStatus sn_tcp_accept(SnTcpSocket *sock, SnTcpSocket *client, SnEndPoint 
         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) return SN_ACCEPT_TIMEOUT;
         return SN_ACCEPT_ERROR;
     }
+    if (!sn_network_set_close_on_exec(client_fd)) {
+        close(client_fd);
+        return SN_ACCEPT_ERROR;
+    }
 
     set_fd(client, client_fd);
 
@@ -121,6 +131,10 @@ bool sn_tcp_connect(SnTcpSocket *sock, const SnEndPoint *ep) {
 
     int fd = socket(ss.ss_family, SOCK_STREAM, 0);
     if (fd < 0) return false;
+    if (!sn_network_set_close_on_exec(fd)) {
+        close(fd);
+        return false;
+    }
 
     if (connect(fd, (struct sockaddr *)&ss, addrlen) < 0) {
         close(fd);
