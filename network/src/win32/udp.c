@@ -77,8 +77,10 @@ int64_t sn_udp_send_to(SnUdpSocket *sock, const void *data, uint64_t size, const
     return ret == SOCKET_ERROR ? -1 : (int64_t)ret;
 }
 
-int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep) {
-    if (!sock) return -1;
+int64_t sn_udp_receive_from(
+    SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep, SnRecvStatus *status) {
+    if (status) *status = SN_RECV_ERROR;
+    if (!sock || !buf) return -1;
 
     SOCKET fd = get_fd(sock);
     if (fd == INVALID_SOCKET) return -1;
@@ -88,7 +90,12 @@ int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPo
 
     if (size > INT_MAX) size = INT_MAX;
     int ret = recvfrom(fd, (char *)buf, (int)size, 0, (struct sockaddr *)&ss, &addrlen);
-    if (ret == SOCKET_ERROR) return -1;
+    if (ret == SOCKET_ERROR) {
+        int error = WSAGetLastError();
+        if (status)
+            *status = (error == WSAETIMEDOUT || error == WSAEWOULDBLOCK) ? SN_RECV_TIMEOUT : SN_RECV_ERROR;
+        return -1;
+    }
 
     if (sender_ep) {
         memset(sender_ep->data, 0, sizeof(sender_ep->data));
@@ -103,6 +110,7 @@ int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPo
         }
     }
 
+    if (status) *status = SN_RECV_DATA;
     return (int64_t)ret;
 }
 

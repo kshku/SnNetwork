@@ -1,19 +1,22 @@
 #pragma once
 
-#include "snnetwork/address.h"
+#include "snnetwork/socket.h"
 
 /**
  * @brief Opaque UDP socket handle.
  *
  * Represents a connectionless UDP socket that can send and receive datagrams.
- * The underlying representation wraps a platform socket descriptor together
- * with optional state flags. All operations are blocking by default.
+ * An alias of SnSocket: TCP and UDP sockets share the same underlying
+ * representation, the name only documents intent at the call site. All
+ * operations are blocking by default.
  *
  * A socket must be closed with sn_udp_close() when no longer needed.
+ *
+ * @note Thread safety: distinct sockets may be used from different threads
+ *       concurrently, but a single socket must not be used from two threads at
+ *       once. SnNetwork performs no internal locking.
  */
-typedef struct SnUdpSocket {
-    alignas(16) uint8_t data[32];
-} SnUdpSocket;
+typedef SnSocket SnUdpSocket;
 
 /**
  * @brief Open a new UDP socket.
@@ -63,10 +66,16 @@ SN_NETWORK_API int64_t sn_udp_send_to(SnUdpSocket *sock, const void *data, uint6
  * @param[in]  size      Capacity of the buffer in bytes.
  * @param[out] sender_ep Sender's endpoint (address + port).
  *                       Pass NULL if the sender address is not needed.
+ * @param[out] status    Outcome of the call. May be NULL if the caller only
+ *                       needs the byte count, but the count alone cannot tell
+ *                       a timeout (-1) from an error (-1); pass a status to
+ *                       distinguish them. See SnRecvStatus.
  *
- * @return The number of bytes received on success, or -1 on failure.
+ * @return The number of bytes received (status SN_RECV_DATA), or -1 on timeout
+ *         (SN_RECV_TIMEOUT) or failure (SN_RECV_ERROR).
  */
-SN_NETWORK_API int64_t sn_udp_receive_from(SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep);
+SN_NETWORK_API int64_t sn_udp_receive_from(
+    SnUdpSocket *sock, void *buf, uint64_t size, SnEndPoint *sender_ep, SnRecvStatus *status);
 
 /**
  * @brief Close a UDP socket and release its resources.

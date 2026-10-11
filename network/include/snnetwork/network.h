@@ -6,11 +6,13 @@
  *
  * Includes all public API headers of the networking abstraction library.
  * Include this single header to gain access to all types and functions, or
- * include individual headers (address.h, tcp.h, udp.h) for finer granularity.
+ * include individual headers (address.h, socket.h, tcp.h, udp.h) for finer
+ * granularity.
  */
 
 #include "snnetwork/address.h"
 #include "snnetwork/api.h"
+#include "snnetwork/socket.h"
 #include "snnetwork/tcp.h"
 #include "snnetwork/udp.h"
 

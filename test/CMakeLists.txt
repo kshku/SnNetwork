@@ -17,6 +17,11 @@ target_sources(sn_network_udp_test PRIVATE udp_test.c ${TEST_COMMON_SRCS})
 target_link_libraries(sn_network_udp_test PRIVATE snnetwork)
 add_test(NAME sn_network_udp_test COMMAND sn_network_udp_test)
 
+add_executable(sn_network_socket_test)
+target_sources(sn_network_socket_test PRIVATE socket_test.c ${TEST_COMMON_SRCS})
+target_link_libraries(sn_network_socket_test PRIVATE snnetwork)
+add_test(NAME sn_network_socket_test COMMAND sn_network_socket_test)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND SN_NETWORK_BUILD_SHARED)
     add_custom_target(copy_dlls ALL
         COMMENT "Copy the dlls"

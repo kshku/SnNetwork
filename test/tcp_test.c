@@ -30,7 +30,7 @@ int main(void) {
     }
 
     SnTcpSocket server_client;
-    if (!sn_tcp_accept(&listener, &server_client, NULL)) {
+    if (sn_tcp_accept(&listener, &server_client, NULL, SN_TIMEOUT_INFINITE) != SN_ACCEPT_OK) {
         printf("FAIL: sn_tcp_accept\n");
         sn_tcp_close(&client);
         sn_tcp_close(&listener);
@@ -50,8 +50,9 @@ int main(void) {
     }
 
     char recv_buf[64] = {0};
-    int64_t received = sn_tcp_receive(&server_client, recv_buf, sizeof(recv_buf));
-    if (received != (int64_t)strlen(msg) || strcmp(recv_buf, msg) != 0) {
+    SnRecvStatus status = SN_RECV_ERROR;
+    int64_t received = sn_tcp_receive(&server_client, recv_buf, sizeof(recv_buf), &status);
+    if (received != (int64_t)strlen(msg) || status != SN_RECV_DATA || strcmp(recv_buf, msg) != 0) {
         printf("FAIL: sn_tcp_receive (got: %s)\n", recv_buf);
         sn_tcp_close(&server_client);
         sn_tcp_close(&client);
@@ -72,8 +73,8 @@ int main(void) {
     }
 
     memset(recv_buf, 0, sizeof(recv_buf));
-    received = sn_tcp_receive(&client, recv_buf, sizeof(recv_buf));
-    if (received != (int64_t)strlen(response) || strcmp(recv_buf, response) != 0) {
+    received = sn_tcp_receive(&client, recv_buf, sizeof(recv_buf), &status);
+    if (received != (int64_t)strlen(response) || status != SN_RECV_DATA || strcmp(recv_buf, response) != 0) {
         printf("FAIL: sn_tcp_receive response (got: %s)\n", recv_buf);
         sn_tcp_close(&server_client);
         sn_tcp_close(&client);

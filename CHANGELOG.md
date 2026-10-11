@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.2.0] - 2026-10-02
+
+### Added
+- Wait for readability on a set of sockets with a single deadline
+  (`sn_socket_wait`, `SnPollFd`, `SnWaitStatus`), over `poll()`/`WSAPoll()`
+- Read back the local bound endpoint of a socket, including the port the OS
+  chose when binding to port 0 (`sn_socket_get_local_end_point`)
+- Half-close a connection with read/write/both direction
+  (`sn_tcp_shutdown`, `SnShutdownHow`)
+- Receive calls report why they returned instead of a bare `-1`
+  (`SnRecvStatus`: data, closed, timeout, error)
+- `sn_tcp_accept` reports success, timeout, or error (`SnAcceptStatus`)
+- `SN_TIMEOUT_INFINITE` sentinel for calls that take a deadline
+
+### Changed
+- `SnTcpSocket` and `SnUdpSocket` are now aliases of a shared opaque `SnSocket`
+- `sn_tcp_accept` takes a `timeout_ms` deadline and returns `SnAcceptStatus`
+  rather than blocking forever and returning `bool`
+- `sn_tcp_receive` and `sn_udp_receive_from` take an `SnRecvStatus` out-parameter
+
 ## [0.1.3] - 2026-10-02
 
 ### Changed
