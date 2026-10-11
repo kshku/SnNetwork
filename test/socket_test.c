@@ -1,5 +1,6 @@
 #include <snnetwork/network.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static const uint8_t LOOPBACK[4] = {127, 0, 0, 1};
@@ -190,6 +191,69 @@ static void test_wait_many_descriptors(void) {
     }
 }
 
+/* A set larger than the built-in stack scratch must go through the allocator
+   installed with sn_network_set_allocator(), and must fail without one. */
+static int alloc_calls;
+static int free_calls;
+
+static void *counting_alloc(void *data, uint64_t size, uint64_t align) {
+    (void)data;
+    (void)align;
+    alloc_calls++;
+    return malloc((size_t)size);
+}
+
+static void counting_free(void *data, void *ptr) {
+    (void)data;
+    free_calls++;
+    free(ptr);
+}
+
+static SnMemoryAllocator counting_allocator = {
+    .data = NULL,
+    .alloc = counting_alloc,
+    .realloc = NULL,
+    .free = counting_free,
+};
+
+/* R5: a set of more than 64 descriptors needs the installed allocator. */
+static void test_wait_large_set_allocator(void) {
+    SnPollFd nulls[65];
+    for (size_t i = 0; i < SN_ARRAY_LENGTH(nulls); ++i) nulls[i].sock = NULL;
+
+    if (sn_socket_wait(nulls, SN_ARRAY_LENGTH(nulls), 0) != SN_WAIT_ERROR) {
+        fail("large: no allocator must fail");
+    }
+
+    SnTcpSocket listeners[65];
+    SnPollFd fds[65];
+    size_t opened = 0;
+    for (size_t i = 0; i < SN_ARRAY_LENGTH(listeners); ++i) {
+        uint16_t port = 0;
+        if (!make_listener(&listeners[i], &port)) break;
+        fds[i].sock = &listeners[i];
+        opened++;
+    }
+
+    if (opened != SN_ARRAY_LENGTH(listeners)) {
+        fail("large: open 65 listeners");
+    } else {
+        alloc_calls = 0;
+        free_calls = 0;
+        sn_network_set_allocator(&counting_allocator);
+        SnWaitStatus status = sn_socket_wait(fds, opened, 0);
+        sn_network_set_allocator(NULL);
+
+        if (status != SN_WAIT_TIMEOUT) fail("large: idle set should time out");
+        if (alloc_calls != 1) fail("large: allocator should be used once");
+        if (free_calls != 1) fail("large: scratch must be freed");
+    }
+
+    for (size_t i = 0; i < opened; ++i) {
+        sn_tcp_close(&listeners[i]);
+    }
+}
+
 /* R3: accept honours its deadline and never blocks when the timeout is zero. */
 static void test_accept_deadline(void) {
     SnTcpSocket listener;
@@ -302,6 +366,7 @@ int main(void) {
     test_wait_reports_the_right_fd();
     test_wait_hangup();
     test_wait_many_descriptors();
+    test_wait_large_set_allocator();
     test_accept_deadline();
     test_receive_status();
     test_shutdown();

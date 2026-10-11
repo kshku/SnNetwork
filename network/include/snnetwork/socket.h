@@ -85,6 +85,12 @@ typedef enum SnWaitStatus {
  *
  * On return every entry's @c readable and @c hangup fields are overwritten.
  *
+ * @par Scratch memory
+ * Sets of 64 or fewer descriptors are staged in a fixed stack buffer and never
+ * allocate. A larger set is staged through the allocator installed with
+ * sn_network_set_allocator(); with no allocator installed such a call fails
+ * with SN_WAIT_ERROR.
+ *
  * @param[in,out] fds        Array of descriptors. Every entry must hold a valid
  *                           socket. May be NULL only when @p count is 0.
  * @param[in]     count      Number of descriptors in @p fds.
@@ -93,7 +99,8 @@ typedef enum SnWaitStatus {
  *
  * @return SN_WAIT_READY if at least one socket is readable,
  *         SN_WAIT_TIMEOUT if the deadline elapsed, or
- *         SN_WAIT_ERROR if the wait itself failed.
+ *         SN_WAIT_ERROR if the wait itself failed, which includes asking for
+ *         more than 64 descriptors with no allocator installed.
  */
 SN_NETWORK_API SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms);
 

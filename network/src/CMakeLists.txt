@@ -5,6 +5,7 @@ set(HEADERFILES
 
 set(SRCS
     address.c
+    allocator.c
 )
 
 set(SPECIFIC_SRCS

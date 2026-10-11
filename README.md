@@ -13,6 +13,7 @@ IPv4 and IPv6 across platforms.
 |----------|-------------|
 | `bool sn_network_init(void)` | Initialize networking subsystem (call once before any other networking function) |
 | `void sn_network_deinit(void)` | Shutdown networking subsystem |
+| `void sn_network_set_allocator(const SnMemoryAllocator *allocator)` | Install the allocator used for scratch when `sn_socket_wait` is given more than 64 descriptors |
 
 ### Endpoint (`<snnetwork/address.h>`)
 
@@ -68,7 +69,7 @@ IPv4 and IPv6 across platforms.
 #include <string.h>
 
 int main(void) {
-    sn_network_init(false);
+    sn_network_init();
 
     SnEndPoint ep;
     uint8_t addr[4] = {127, 0, 0, 1};
