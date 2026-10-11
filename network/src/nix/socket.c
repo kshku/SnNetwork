@@ -2,13 +2,14 @@
 
 #if defined(SN_OS_LINUX) || defined(SN_OS_MAC)
 
+    #include "../internal.h"
+
     #include <arpa/inet.h>
     #include <errno.h>
     #include <limits.h>
     #include <netinet/in.h>
     #include <poll.h>
     #include <sntime/sntime.h>
-    #include <stdlib.h>
     #include <string.h>
     #include <sys/socket.h>
 
@@ -34,11 +35,14 @@ SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms) {
 
     struct pollfd stack_pfds[64];
     struct pollfd *pfds = stack_pfds;
-    bool heap = false;
+    /* Sets that fit the stack scratch never allocate; larger sets use the
+       caller-installed allocator and fail when none is provided. */
+    const SnMemoryAllocator *scratch = NULL;
     if (count > SN_ARRAY_LENGTH(stack_pfds)) {
-        pfds = malloc(count * sizeof(*pfds));
+        scratch = sn_network_get_allocator();
+        if (!scratch || !scratch->alloc || !scratch->free) return SN_WAIT_ERROR;
+        pfds = scratch->alloc(scratch->data, (uint64_t)(count * sizeof(*pfds)), alignof(struct pollfd));
         if (!pfds) return SN_WAIT_ERROR;
-        heap = true;
     }
 
     for (size_t i = 0; i < count; ++i) {
@@ -74,13 +78,13 @@ SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms) {
         ret = poll(pfds, (nfds_t)count, wait);
         if (ret >= 0) break;
         if (errno != EINTR) {
-            if (heap) free(pfds);
+            if (scratch) scratch->free(scratch->data, pfds);
             return SN_WAIT_ERROR;
         }
     }
 
     if (ret == 0) {
-        if (heap) free(pfds);
+        if (scratch) scratch->free(scratch->data, pfds);
         return SN_WAIT_TIMEOUT;
     }
 
@@ -94,7 +98,7 @@ SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms) {
         }
     }
 
-    if (heap) free(pfds);
+    if (scratch) scratch->free(scratch->data, pfds);
     return SN_WAIT_READY;
 }
 

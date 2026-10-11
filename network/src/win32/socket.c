@@ -2,8 +2,9 @@
 
 #if defined(SN_OS_WINDOWS)
 
+    #include "../internal.h"
+
     #include <limits.h>
-    #include <stdlib.h>
     #include <string.h>
     #include <winsock2.h>
     #include <ws2tcpip.h>
@@ -28,11 +29,14 @@ SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms) {
 
     WSAPOLLFD stack_pfds[64];
     WSAPOLLFD *pfds = stack_pfds;
-    bool heap = false;
+    /* Sets that fit the stack scratch never allocate; larger sets use the
+       caller-installed allocator and fail when none is provided. */
+    const SnMemoryAllocator *scratch = NULL;
     if (count > SN_ARRAY_LENGTH(stack_pfds)) {
-        pfds = malloc(count * sizeof(*pfds));
+        scratch = sn_network_get_allocator();
+        if (!scratch || !scratch->alloc || !scratch->free) return SN_WAIT_ERROR;
+        pfds = scratch->alloc(scratch->data, (uint64_t)(count * sizeof(*pfds)), alignof(WSAPOLLFD));
         if (!pfds) return SN_WAIT_ERROR;
-        heap = true;
     }
 
     for (size_t i = 0; i < count; ++i) {
@@ -52,12 +56,12 @@ SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms) {
 
     int ret = WSAPoll(pfds, (ULONG)count, wait);
     if (ret == SOCKET_ERROR) {
-        if (heap) free(pfds);
+        if (scratch) scratch->free(scratch->data, pfds);
         return SN_WAIT_ERROR;
     }
 
     if (ret == 0) {
-        if (heap) free(pfds);
+        if (scratch) scratch->free(scratch->data, pfds);
         return SN_WAIT_TIMEOUT;
     }
 
@@ -71,7 +75,7 @@ SnWaitStatus sn_socket_wait(SnPollFd *fds, size_t count, uint64_t timeout_ms) {
         }
     }
 
-    if (heap) free(pfds);
+    if (scratch) scratch->free(scratch->data, pfds);
     return SN_WAIT_READY;
 }
 

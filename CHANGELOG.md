@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0] - 2026-10-11
+
+### Added
+- Install the allocator `sn_socket_wait` uses for sets larger than 64
+  descriptors (`sn_network_set_allocator`)
+
+### Changed
+- `sn_socket_wait` no longer allocates through `malloc`. Sets of up to 64
+  descriptors stay on the stack, larger sets use the installed allocator, and a
+  larger set with no allocator installed fails with `SN_WAIT_ERROR`
+
 ## [0.2.0] - 2026-10-02
 
 ### Added
